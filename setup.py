@@ -2,7 +2,7 @@ from setuptools import Extension, setup
 
 # load the C extentsion library
 interp = Extension(
-    name="interp.engines.cubic1d._cubic1d",
+    name="interp.engines._cubic1d",
     include_dirs=["interp/engines/"],
     depends=["interp/engines/cubic.h"],
     sources=["interp/engines/cubic.c"]
@@ -10,15 +10,13 @@ interp = Extension(
 
 # run setup tools
 setup(
-    name='pyusel-cubic-interp',
+    name='pyusel-interp',
     description="C-Backed cubic interpolation engines",
     author_email="wew12@duke.edu",
-    packages=['interp', 'interp.engines', 'interp.engines.cubic1d', 'interp.engines.cubic1d._cubic1d'],
+    packages=['interp', 'interp.engines'],
     package_dir={
         'interp':'interp/', 
         'interp.engines':'interp/engines',
-        'interp.engines.cubic1d':'interp/engines',
-        'interp.engines.cubic1d._cubic1d':'interp/engines',
     },
     license="MIT",
     ext_modules=[interp],

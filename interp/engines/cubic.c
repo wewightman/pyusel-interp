@@ -35,11 +35,11 @@ float * cubic1D_fixed(float ** pxin, int Nin, IntrpData1D_Fixed ** pknots)
 
     for(int i=0; i<Nin; ++i) 
     {
-        x = xin[i];         // extract interpolation point
-        j = (int) (x/dx);   // calculate knot index
+        x = xin[i];                 // extract interpolation point
+        j = (int) ((x-xmin)/dx);    // calculate knot index
 
         // if out of bounds, return fill vlaue
-        if ((j < 0) || (j >= ((knots->N) - 1)))
+        if ((x < xmin) || (x > xmax))
         {
             y[i] = knots->fill;
         }
@@ -54,7 +54,7 @@ float * cubic1D_fixed(float ** pxin, int Nin, IntrpData1D_Fixed ** pknots)
             // generate interpolation terms
             a = (xlead - x) / dx;
             b = (x - xlag) / dx;
-            c = (1.0f/6.0f) * (powf(a, 3.0f) - a) * powf(dx, 1.0f);
+            c = (1.0f/6.0f) * (powf(a, 3.0f) - a) * powf(dx, 2.0f);
             d = (1.0f/6.0f) * (powf(b, 3.0f) - b) * powf(dx, 2.0f);
 
             // calculate y value
@@ -77,17 +77,20 @@ IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart
     float * u  = (float *) malloc(sizeof(float) * N);
 
     float *y = *py;
+    float sig, p;
 
     // set y'' = 0 boundary condition
     y2[0] = 0.0f;
     u[0] = 0.0f;
 
     // forward decomposition loop of tri-diagonal inversion algorithm
-    for (int i=0; i < N-1; ++i)
+    for (int i=1; i < N-1; ++i)
     {
-        y2[i] = 0.0f;
+        sig = 0.5f;
+        p = sig*y2[i-1]+2.0f;
+        y2[i] = (sig-1.0f)/p;
         u[i] = (y[i+1] - y[i])/dx - (y[i] - y[i-1])/dx;
-        u[i] = (6.0f*u[i] / (2.0f*dx) - u[i-1]) / (y2[i-1] + 2.0f);
+        u[i] = (6.0f*u[i] / (2.0f*dx) - sig * u[i-1]) / p;
     }
 
     // backsubstitution loop of tridiagonal algorithm

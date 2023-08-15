@@ -1,1 +1,1 @@
-from interp.engines.cubic1d import cubic1d
+from interp.engines.cubic1d import tieknots1D, getcubic1D, knots
