@@ -26,4 +26,7 @@ plt.figure()
 plt.scatter(x, y)
 plt.plot(xnew, yout)
 plt.plot(xnew, fsci(xnew))
+
+plt.figure()
+plt.plot(xnew, yout-fsci(xnew))
 plt.show()
