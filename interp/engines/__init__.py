@@ -1,1 +1,1 @@
-from interp.engines.cubic1d import __cubic1d__, knots
+from interp.engines.cubic1d import __cubic1d__, Knots1D_Fixed
