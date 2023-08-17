@@ -19,7 +19,7 @@ else:
     name = res[0]
 
 # load the c library
-cubic1d = ct.CDLL(name)
+__cubic1d__ = ct.CDLL(name)
 
 class knots(ct.Structure):
     _fields_ = [('N', ct.c_int), 
@@ -29,10 +29,19 @@ class knots(ct.Structure):
                 ('y2', ct.POINTER(ct.c_float)),
                 ('fill', ct.c_float)]
 
-tieknots1D = cubic1d.tie_knots1D_fixed
-tieknots1D.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.c_float, ct.c_float, ct.c_float)
-tieknots1D.restype = (ct.POINTER(knots))
+__cubic1d__.tie_knots1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.c_float, ct.c_float, ct.c_float)
+__cubic1d__.tie_knots1D_fixed.restype = (ct.POINTER(knots))
+__cubic1d__.tie_knots1D_fixed.__doc__ = """Tie the knots for 1D cubic interpolation with fixed sampling period
 
-getcubic1D = cubic1d.cubic1D_fixed
-getcubic1D.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.POINTER(ct.POINTER(knots)))
-getcubic1D.restype = (ct.POINTER(ct.c_float))
+This function estimates the second derivative at every point, 
+currenly asssuming the end knots have a second derivative of 0.
+The data is assumed to be evenly sampled at a spacing of dx, 
+with a start point of xstart, and an out of bounds fill value.
+
+Parameters:
+----
+
+"""
+
+__cubic1d__.cubic1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.POINTER(ct.POINTER(knots)))
+__cubic1d__.cubic1D_fixed.restype = (ct.POINTER(ct.c_float))

@@ -18,6 +18,10 @@ setup(
         'interp':'interp/', 
         'interp.engines':'interp/engines',
     },
+    install_requires = [
+        "numpy",
+        "pyusel-cinpy @ https://github.com/wewightman/pyusel-cinpy/archive/main.tar.gz",
+    ],
     license="MIT",
     ext_modules=[interp],
     version="0.0.0"
