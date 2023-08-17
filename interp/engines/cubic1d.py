@@ -1,5 +1,7 @@
 """Python wrapper for c-based 1D cubic interpolators"""
 import ctypes as ct
+import numpy as np
+from cinpy import copy2c, copy2py, free
 from glob import glob
 import platform as _pltfm
 import os
@@ -21,7 +23,8 @@ else:
 # load the c library
 __cubic1d__ = ct.CDLL(name)
 
-class knots(ct.Structure):
+# define the structure for a 1D fixed-sampling knot scheme
+class Knots1D_Fixed(ct.Structure):
     _fields_ = [('N', ct.c_int), 
                 ('xstart', ct.c_float), 
                 ('dx', ct.c_float),
@@ -29,8 +32,9 @@ class knots(ct.Structure):
                 ('y2', ct.POINTER(ct.c_float)),
                 ('fill', ct.c_float)]
 
-__cubic1d__.tie_knots1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.c_float, ct.c_float, ct.c_float)
-__cubic1d__.tie_knots1D_fixed.restype = (ct.POINTER(knots))
+## tie_knots1D_fixed
+__cubic1d__.tie_knots1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.c_float, ct.c_float, ct.c_float, ct.c_int)
+__cubic1d__.tie_knots1D_fixed.restype = (ct.POINTER(Knots1D_Fixed))
 __cubic1d__.tie_knots1D_fixed.__doc__ = """Tie the knots for 1D cubic interpolation with fixed sampling period
 
 This function estimates the second derivative at every point, 
@@ -40,8 +44,115 @@ with a start point of xstart, and an out of bounds fill value.
 
 Parameters:
 ----
+py: pointer to an array of y values
+N: length of py
+dx: spacing of samples in x
+xstart: value of x at (*py)[0]
+fill: fill value for out-of-bounds points
 
+Returns:
+knots: a pointer to a knots sctructure
 """
 
-__cubic1d__.cubic1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.POINTER(ct.POINTER(knots)))
+## cubic1D_fixed
+__cubic1d__.cubic1D_fixed.argtypes = (ct.POINTER(ct.POINTER(ct.c_float)), ct.c_int, ct.POINTER(ct.POINTER(Knots1D_Fixed)))
 __cubic1d__.cubic1D_fixed.restype = (ct.POINTER(ct.c_float))
+__cubic1d__.cubic1D_fixed.__doc__ = """Interpolate data the input values of x for a given knotset
+
+This function returns the value for the function defined by the input knots as every point. 
+
+Parameters:
+----
+px: pointer to an array of x values to evaluate y at
+N: length of the input x values
+pknot: pointer to the knot structure defining this function
+
+Returns:
+----
+vals: a length N vector of Y evaluated at each X
+"""
+
+## free_IntrpData1D_Fixed
+__cubic1d__.free_IntrpData1D_Fixed.argtypes = (ct.POINTER(ct.POINTER(Knots1D_Fixed)),)
+__cubic1d__.free_IntrpData1D_Fixed.restype = (None)
+__cubic1d__.free_IntrpData1D_Fixed.__doc__ = """Free a given knot structure"""
+
+
+class IntCub1DSet():
+    def __init__(self, M:int, N:int, **kwargs):
+        """Build a flexible interpolator set for M, length-N vectors
+        
+        Returns a callable interpolator set that can handle M vectors of length N
+        """
+        self.knots = None
+        self.M = M
+        self.N = N
+
+    def clean(self):
+        """Remove data loaded into """
+        if self.knots is None:
+            return
+        
+        # clear this set's knots
+        knots = self.knots
+        self.knots = None
+        for knot in knots:
+            __cubic1d__.free_IntrpData1D_Fixed(ct.byref(knot))
+
+    def fill(self, mat:np.ndarray, dn=1, n0=0, fill=0):
+        """Take an M by N matrix and generate knots for it"""
+
+        # Validate input matrix
+        if (mat.shape[0] != self.M) or (mat.shape[1] != self.N):
+            raise ValueError(f"Dimensions were supposed to be ({self.M}, {self.N}) but were ({mat.shape[0]}, {mat.shape[1]})")
+        
+        # convert input matrix to set of pointers
+        pmat, cM, cN = copy2c(mat)
+
+        # define consistent inputs
+        c_dn = ct.c_float(dn)
+        c_n0 = ct.c_float(n0)
+        c_Ny = ct.c_float(self.N)
+        c_fill = ct.c_float(fill)
+        c_copy = ct.c_int(1)
+
+        # for each vector...
+        self.knots = []
+        for m in self.M:
+            # ...build an interpolator
+            py = pmat[m]
+            knot = __cubic1d__.tie_knots1D_fixed(ct.byref(py), c_Ny, c_dn, c_n0, c_fill, c_copy)
+            self.knots.append(knot)
+
+        # clean the numpy array buffer
+        free(pmat, cM, cN)
+
+    def __call__(self, points:np.ndarray):
+        """Extract estimates of the input functions at points"""
+        if self.knots is None:
+            raise ValueError("Class of IntCub1DSet must be filled with data")
+        
+        if np.ndim(points) == 1:
+            # make points 2D if it is a vector
+            points = points.reshape((-1,1))
+            
+        if np.ndim(points) == 2:
+            if (points.shape[0] != self.M):
+                raise ValueError(f"Dimensions were supposed to be ({self.M}) but were ({points.shape[0]})")
+        else:
+            raise ValueError(f"Points must be a length-{self.M} vector or have dimensions of ({self.M}, P)")
+
+        # convert points to c type
+        ppoints, cM, cP = copy2c(points)
+
+        c_out = (ct.POINTER(ct.c_float) * self.M)()
+
+        # interpolate each axis for each value of ppoints
+        for ip in range(self.M):
+            psel = ppoints[ip]
+            c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cM, ct.byref(self.knots[ip]))
+        
+        # convert c_out to numpy array
+        out = copy2py(c_out, M=self.M, N=cP)
+
+        return out

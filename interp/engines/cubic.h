@@ -19,6 +19,7 @@ struct IntrpData1D_Fixed {
 typedef struct IntrpData1D_Fixed IntrpData1D_Fixed;
 
 extern float * cubic1D_fixed(float ** pxin, int Nin, IntrpData1D_Fixed ** pknots);
-extern IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart, float fill);
+extern IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart, float fill, int ycopy);
+extern void free_IntrpData1D_Fixed(IntrpData1D_Fixed ** pknots);
 
 #endif

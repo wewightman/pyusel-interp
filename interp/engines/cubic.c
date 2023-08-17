@@ -71,7 +71,7 @@ float * cubic1D_fixed(float ** pxin, int Nin, IntrpData1D_Fixed ** pknots)
  * Comments are to the writer's knowledge
  * Wren Wightman, github:@wewightman, 2023
 */
-IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart, float fill) {
+IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart, float fill, int ycopy) {
     // generate loop variables and buffers
     float * y2 = (float *) malloc(sizeof(float) * N);
     float * u  = (float *) malloc(sizeof(float) * N);
@@ -108,9 +108,33 @@ IntrpData1D_Fixed * tie_knots1D_fixed(float ** py, int N, float dx, float xstart
     knots->dx = dx;
     knots->xstart = xstart;
     knots->N = N;
-    knots->y = y;
     knots->fill = fill;
     knots->y2 = y2;
 
+    // make a deep copy of y if requested, otherwise, save reference to input y
+    if (ycopy)
+    {
+        float * ytilde = (float *) malloc(sizeof(float) * N);
+        for(int i = 0; i < N; ++i) ytilde[i] = y[i];
+        knots->y = ytilde;
+    }
+    else 
+    {
+        knots->y = y;
+    }
+
     return knots;
+}
+
+/**
+ * Free an instance of an IntrpData1D_Fixed structure
+*/
+void free_IntrpData1D_Fixed(IntrpData1D_Fixed ** pknots)
+{
+    IntrpData1D_Fixed * knots = *pknots;
+
+    // free all generated vectors and free the space allocated for the structure
+    free(knots->y);
+    free(knots->y2);
+    free(knots);
 }
