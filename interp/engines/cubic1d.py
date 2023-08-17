@@ -112,13 +112,13 @@ class IntCub1DSet():
         # define consistent inputs
         c_dn = ct.c_float(dn)
         c_n0 = ct.c_float(n0)
-        c_Ny = ct.c_float(self.N)
+        c_Ny = ct.c_int(self.N)
         c_fill = ct.c_float(fill)
         c_copy = ct.c_int(1)
 
         # for each vector...
         self.knots = []
-        for m in self.M:
+        for m in range(self.M):
             # ...build an interpolator
             py = pmat[m]
             knot = __cubic1d__.tie_knots1D_fixed(ct.byref(py), c_Ny, c_dn, c_n0, c_fill, c_copy)
@@ -146,13 +146,13 @@ class IntCub1DSet():
         ppoints, cM, cP = copy2c(points)
 
         c_out = (ct.POINTER(ct.c_float) * self.M)()
+        c_out = ct.cast(c_out, ct.POINTER(ct.POINTER(ct.c_float)))
 
         # interpolate each axis for each value of ppoints
         for ip in range(self.M):
             psel = ppoints[ip]
-            c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cM, ct.byref(self.knots[ip]))
+            c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cP, ct.byref(self.knots[ip]))
         
         # convert c_out to numpy array
         out = copy2py(c_out, M=self.M, N=cP)
-        free(c_out, cM, cP)
         return out
