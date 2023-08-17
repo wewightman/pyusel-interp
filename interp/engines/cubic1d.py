@@ -154,5 +154,5 @@ class IntCub1DSet():
         
         # convert c_out to numpy array
         out = copy2py(c_out, M=self.M, N=cP)
-
+        free(c_out, cM, cP)
         return out
