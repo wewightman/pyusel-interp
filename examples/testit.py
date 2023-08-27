@@ -2,7 +2,6 @@ import numpy as np
 import ctypes as ct
 from cinpy import copy2py, copy2c
 from scipy.interpolate import interp1d
-from interp.engines import Knots1D_Fixed
 import interp.engines as eng
 import matplotlib.pyplot as plt
 
