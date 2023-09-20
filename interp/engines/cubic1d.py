@@ -81,14 +81,17 @@ __cubic1d__.free_IntrpData1D_Fixed.__doc__ = """Free a given knot structure"""
 
 
 class IntCub1DSet():
-    def __init__(self, M:int, N:int, **kwargs):
+    def __init__(self, mat:np.ndarray, dn=1, n0=0, fill=0):
         """Build a flexible interpolator set for M, length-N vectors
         
         Returns a callable interpolator set that can handle M vectors of length N
         """
+        M, N = mat.shape
         self.knots = None
         self.M = M
         self.N = N
+
+        self.fill(mat, dn, n0, fill)
 
     def clean(self):
         """Remove data loaded into """
@@ -129,93 +132,49 @@ class IntCub1DSet():
         # clean the numpy array buffer
         free(pmat, cM, cN)
 
-    def __call__(self, points:np.ndarray):
-        """Extract estimates of the input functions at points"""
+    def __call__(self, taus:np.ndarray, points:np.ndarray|None=None, asbuffer=False):
+        """Extract estimates of the input functions at timepoint taus
+        
+        Parameters:
+        ----
+        taus: a M rows of intputs, can be 1D or 2D. Second dimension (T) indicates the number of different delay tabs to consider
+        points: vector of additive values to consider for each delay tab"""
         if self.knots is None:
             raise ValueError("Class of IntCub1DSet must be filled with data")
         
-        if np.ndim(points) == 1:
+        if np.ndim(taus) == 1:
+            if (len(taus) != self.M):
+                raise ValueError(f"Dimensions were supposed to be ({self.M}) but were ({taus.shape[0]})")
             # make points 2D if it is a vector
-            points = points.reshape((-1,1))
-            
-        if np.ndim(points) == 2:
-            if (points.shape[0] != self.M):
-                raise ValueError(f"Dimensions were supposed to be ({self.M}) but were ({points.shape[0]})")
+            taus = taus.reshape((self.M,1,1))
+            T = 1
+
+        # get T reps 
+        elif np.ndim(taus) == 2:
+            if (taus.shape[0] != self.M):
+                raise ValueError(f"Dimensions were supposed to be ({self.M}) but were ({taus.shape[0]})")
+            taus = taus.reshape((self.M,-1,1))
+            T = taus.shape[1]
         else:
             raise ValueError(f"Points must be a length-{self.M} vector or have dimensions of ({self.M}, P)")
+        
+        # broadcast points
+        if points is not None:
+            taus = taus * points.reshape((1, 1, -1))
 
-        # convert points to c type
-        ppoints, cM, cP = copy2c(points)
-
-        c_out = (ct.POINTER(ct.c_float) * self.M)()
+        c_out = (ct.POINTER(ct.POINTER(ct.c_float) * T) * self.M)()
         c_out = ct.cast(c_out, ct.POINTER(ct.POINTER(ct.c_float)))
 
         # interpolate each axis for each value of ppoints
         for ip in range(self.M):
-            psel = ppoints[ip]
-            c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cP, ct.byref(self.knots[ip]))
+            
+            for it in range(T):
+                psel = ppoints[ip]
+                c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cP, ct.byref(self.knots[ip]))
         
         # convert c_out to numpy array
         out = copy2py(c_out, M=self.M, N=cP)
         return out
     
-class IntCub1DSet_Buffer():
-    def __init__(self, M:int, N:int, **kwargs):
-        """Build a flexible interpolator set for M, length-N vectors
-        
-        Returns a callable interpolator set that can handle M vectors of length N
-        """
-        self.knots = None
-        self.M = M
-        self.N = N
-
-    def clean(self):
-        """Remove data loaded into """
-        if self.knots is None:
-            return
-        
-        # clear this set's knots
-        knots = self.knots
-        self.knots = None
-        for knot in knots:
-            __cubic1d__.free_IntrpData1D_Fixed(ct.byref(knot))
-
-    def fill(self, pmat:matptr, cM:ct.c_int, cN:ct.c_int, dn=1, n0=0, fill=0):
-        """Take an M by N matrix and generate knots for it along n"""
-
-        # Validate input matrix
-        if (cM.value != self.M) or (cN.value != self.N):
-            raise ValueError(f"Dimensions were supposed to be ({self.M}, {self.N}) but were ({cM.value}, {cN.value})")
-
-        # define consistent inputs
-        c_dn = ct.c_float(dn)
-        c_n0 = ct.c_float(n0)
-        c_Ny = ct.c_int(self.N)
-        c_fill = ct.c_float(fill)
-        c_copyY = ct.c_int(1)
-
-        # for each vector...
-        self.knots = []
-        for m in range(self.M):
-            # ...build an interpolator
-            py = pmat[m]
-            knot = __cubic1d__.tie_knots1D_fixed(ct.byref(py), c_Ny, c_dn, c_n0, c_fill, c_copyY)
-            self.knots.append(knot)
-
-    def __call__(self, ppoints:matptr, cM:ct.c_int, cP:ct.c_int):
-        """Extract estimates of the input functions at points"""
-        if self.knots is None:
-            raise ValueError("Class of IntCub1DSet must be filled with data")
-    
-        if cM.value != self.M:
-            raise ValueError(f"Points must be a length-{self.M} vector or have dimensions of ({self.M}, P)")
-
-        c_out = (ct.POINTER(ct.c_float) * self.M)()
-        c_out = ct.cast(c_out, ct.POINTER(ct.POINTER(ct.c_float)))
-
-        # interpolate each axis for each value of ppoints
-        for ip in range(self.M):
-            psel = ppoints[ip]
-            c_out[ip] = __cubic1d__.cubic1D_fixed(ct.byref(psel), cP, ct.byref(self.knots[ip]))
-
-        return c_out
+    def __del__(self):
+        self.clean()

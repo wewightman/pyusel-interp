@@ -9,7 +9,7 @@
  * cubic1D_fixed: 1D cubic interpolator for a fixed sampling scheme
  * Based on the cubic interpolation algorithm from Numerical Recipes
  * Comments are to the writer's knowledge
- * Wren Wightman, github:@wewightman, 2023
+ * Wren Wightman, wewightman@github.com, wew@gitlab.oit.duke.edu/, 2023
  * 
  * Parameters:
  *  xin:    pointer to vector of intperpolation coordinates
