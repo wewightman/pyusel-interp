@@ -56,7 +56,7 @@ t5 = time()
 y2= fset0(tausel2, isel)
 t6 = time()
 
-print(1E6*(t1-t0), 1E6*(t4-t3))
+print(1E6*(t1-t0), 1E6*(t4-t3), 1E6*(t6-t5))
 
 print(y0, y1, y2)
 
