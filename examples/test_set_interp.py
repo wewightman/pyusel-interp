@@ -1,7 +1,7 @@
 import numpy as np
 from interp.engines import IntCub1DSet
 import matplotlib.pyplot as plt
-from time import time
+from time import time, sleep
 from cinpy.types import CDataTensor
 
 def fig2img(fig):
@@ -39,9 +39,15 @@ y0 = np.ones((M,1)) * np.sin(2*np.pi*np.arange(N)/T).reshape((1,N))
 
 y0 = CDataTensor.fromnumpy(y0)
 
+sleep(2)
+
+print("Made y0")
+
 t0 = time()
 fset0 = IntCub1DSet(y0)
 t1 = time()
+
+print("Made fest0")
 
 tausel = P * np.sin(2*np.pi*np.arange(M)/M)
 isel = np.arange(N)
@@ -50,11 +56,15 @@ t3 = time()
 y1 = fset0(tausel, isel)
 t4 = time()
 
+print("Interpolated fset0 for y1")
+
 tausel2 = P * (np.sin(2*np.pi*np.arange(M)/M).reshape((-1,1)) * np.sin(2*np.pi*np.arange(M)/M).reshape((1,-1)))
 
 t5 = time()
 y2= fset0(tausel2, isel)
 t6 = time()
+
+print("Interpolated fset0 for y2")
 
 print(1E6*(t1-t0), 1E6*(t4-t3), 1E6*(t6-t5))
 
