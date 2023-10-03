@@ -7,6 +7,10 @@ from glob import glob
 import platform as _pltfm
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # determine installed path
 dirpath = os.path.dirname(__file__)
 
@@ -100,7 +104,8 @@ def __make_knot_recursive__(data:CDataTensor, dn, n0, fill):
         for subdata in data:
             buffer.append(__make_knot_recursive__(subdata, dn, n0, fill))
         return buffer
-    
+
+## FIXME: These two functions are busted  
 def __select_knot_recursive__(knots, data:CDataTensor):
     if not isinstance(knots, list):
         return __sample_knot_recursive__(knots, data)
@@ -111,8 +116,8 @@ def __select_knot_recursive__(knots, data:CDataTensor):
         return CDataTensor(pntr, (len(selected), *(data.shape[1:])), data.dtype)
 
 def __sample_knot_recursive__(knot, data:CDataTensor):
-    if data.isvec():
-        dtype = data.dtype
+    if data.isvec() and not isinstance(knot, list):
+        logger.info("Interpreting")
         # define consistent inputs
         N = ct.c_int(data.shape[0])
         # for each vector...
@@ -123,9 +128,13 @@ def __sample_knot_recursive__(knot, data:CDataTensor):
         arr = ((data[0].getctype()) * len(selected))(*selected)
         pntr = ct.cast(arr, data.getctype())
         return CDataTensor(pntr, (len(selected), *(data.shape[1:])), data.dtype)
-    
+
+## FIXME: above
+
 class IntCub1DSet():
     def __init__(self, data:CDataTensor, dn=1, n0=0, fill=0):
+        if not data.ismat():
+            raise ValueError("DataTensor must be a matrix")
         self.data = data
         self.knots_shape = data.shape[:-1]
         self.Nknots = np.prod(self.knots_shape)
@@ -154,7 +163,7 @@ class IntCub1DSet():
             points = np.expand_dims(points, ([int(val) for val in np.arange(len(tshape))]))
             tauprime = taus + points
             tauten = CDataTensor.fromnumpy(tauprime, self.data.dtype)
-            return __select_knot_recursive__(self.knots, tauten)
+            return __sample_knot_recursive__(self.knots, tauten)
             
 
                 
